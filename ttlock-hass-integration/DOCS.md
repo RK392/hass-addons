@@ -27,7 +27,7 @@ gateway_user: "admin"
 gateway_pass: "admin"
 ```
 
-Please see [ttlock-sdk-js Gateway option](https://github.com/kind3r/ttlock-sdk-js#gateway-option) for running an example gateway server. I am currently working on porting this server to run on ESP32 devices.  
+Please see [ttlock-sdk-js Gateway option](https://github.com/RK392/ttlock-sdk-js#gateway-option) for running an example gateway server. I am currently working on porting this server to run on ESP32 devices.  
 
 ## Other options
 
