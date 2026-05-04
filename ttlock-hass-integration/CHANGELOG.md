@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.14] - 2021-05-06
+- Incrase auto-lock limit to 300 seconds
+- Add build.yaml file to fix build issues
+- Use custom updated SDK with CRC fixe from issue #22 and include new operation codes. 
+
 ## [0.4.11] - 2021-05-06
 - Bump SDK in attempt at fixing connect limbo
 
