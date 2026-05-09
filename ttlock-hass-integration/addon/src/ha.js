@@ -20,6 +20,7 @@ class HomeAssistant {
     this.mqttPass = options.mqttPass;
     this.discovery_prefix = options.discovery_prefix || "homeassistant";
     this.configuredLocks = new Set();
+    this.lockTimes = new Map();
 
     this.connected = false;
 
@@ -39,6 +40,8 @@ class HomeAssistant {
       });
       this.client.on("message", this._onMQTTMessage.bind(this));
       await this.client.subscribe("ttlock/+/set");
+      await this.client.subscribe("ttlock/+/get_time/set");
+      await this.client.subscribe("ttlock/+/sync_time/set");
       this.connected = true;
       console.log("MQTT connected");
     }
@@ -181,6 +184,9 @@ class HomeAssistant {
         battery: lock.getBattery(),
         rssi: lock.getRssi(),
       }
+      if (this.lockTimes.has(id)) {
+        statePayload.lock_time = this.lockTimes.get(id);
+      }
       if (lockedStatus != LockedStatus.UNKNOWN) {
         statePayload.state = lockedStatus == LockedStatus.LOCKED ? "LOCK" : "UNLOCK";
       }
@@ -239,21 +245,8 @@ class HomeAssistant {
   async _onLockTimeUpdated(lock, time) {
     if (this.connected) {
       const id = this.getLockId(lock);
-      const stateTopic = "ttlock/" + id;
-      const lockedStatus = await lock.getLockStatus();
-      let statePayload = {
-        battery: lock.getBattery(),
-        rssi: lock.getRssi(),
-        lock_time: new Date(time).toISOString(),
-      };
-      if (lockedStatus != LockedStatus.UNKNOWN) {
-        statePayload.state = lockedStatus == LockedStatus.LOCKED ? "LOCK" : "UNLOCK";
-      }
-
-      if (process.env.MQTT_DEBUG == "1") {
-        console.log("MQTT Publish", stateTopic, JSON.stringify(statePayload));
-      }
-      await this.client.publish(stateTopic, JSON.stringify(statePayload), { retain: true });
+      this.lockTimes.set(id, new Date(time).toISOString());
+      await this.updateLockState(lock);
     }
   }
 
