@@ -31,6 +31,8 @@ class Lock {
   hasFinger;
   /** @type {boolean} If the lock has audio management */
   hasAudio;
+  /** @type {boolean} If the lock should fetch operation logs automatically */
+  proactiveLogs;
 
   /**
    * 
@@ -57,6 +59,7 @@ class Lock {
     lock.hasCard = lockObject.hasICCard();
     lock.hasFinger = lockObject.hasFingerprint();
     lock.hasAudio = lockObject.hasLockSound();
+    lock.proactiveLogs = lockObject.hasProactiveLogFetching();
 
     return lock;
   }

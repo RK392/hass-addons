@@ -34,6 +34,18 @@
           >
           </v-switch>
         </v-col>
+        <v-col sm="6" cols="12">
+          <v-switch
+            v-model="proactiveLogs"
+            class="mt-0"
+            prepend-icon="mdi-file-eye"
+            label="Automatic operation log fetch"
+            persistent-hint
+            hint="When enabled, the addon will reconnect and fetch new operation logs automatically after events. When disabled, logs are fetched only when the UI requests them."
+            inset
+          >
+          </v-switch>
+        </v-col>
       </v-row>
       <v-row>
         <v-col>
@@ -74,6 +86,7 @@ export default {
       address: this.$route.params.address || this.address,
       autoLockTime: -1,
       audio: false,
+      proactiveLogs: true,
     };
   },
   computed: {
@@ -109,8 +122,11 @@ export default {
     audioChanged() {
       return this.audio != this.lock.audio;
     },
+    proactiveLogsChanged() {
+      return this.proactiveLogs != (typeof this.lock.proactiveLogs != "undefined" ? this.lock.proactiveLogs : true);
+    },
     changesMade() {
-      if (this.autoLockChanged || this.audioChanged) {
+      if (this.autoLockChanged || this.audioChanged || this.proactiveLogsChanged) {
         return true;
       }
       return false;
@@ -124,6 +140,7 @@ export default {
     } else {
       this.autoLockTime = this.lock.autoLockTime;
       this.audio = this.lock.audio;
+      this.proactiveLogs = typeof this.lock.proactiveLogs != "undefined" ? this.lock.proactiveLogs : true;
       this.$store.commit("setActiveLockAddress", this.lock.address);
     }
   },
@@ -154,6 +171,9 @@ export default {
       }
       if (this.audioChanged) {
         settings.audio = this.audio;
+      }
+      if (this.proactiveLogsChanged) {
+        settings.proactiveLogs = this.proactiveLogs;
       }
       this.$store.dispatch("saveSettings", {
         lockAddress: this.lock.address,

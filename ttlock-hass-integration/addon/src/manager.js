@@ -576,6 +576,37 @@ class Manager extends EventEmitter {
     return false;
   }
 
+  async setProactiveLogFetching(address, enabled) {
+    const lock = this.pairedLocks.get(address);
+    if (typeof lock != "undefined") {
+      lock.setProactiveLogFetching(enabled == true);
+    }
+
+    const lockData = store.getLockData();
+    let updated = false;
+    for (let i = 0; i < lockData.length; i++) {
+      if (lockData[i].address == address) {
+        lockData[i].proactiveLogs = enabled == true;
+        updated = true;
+        break;
+      }
+    }
+    if (!updated) {
+      lockData.push({
+        address: address,
+        battery: 0,
+        rssi: 0,
+        autoLockTime: -1,
+        lockedStatus: -1,
+        privateData: {},
+        operationLog: [],
+        proactiveLogs: enabled == true
+      });
+    }
+    store.setLockData(lockData);
+    return true;
+  }
+
   async getOperationLog(address, reload) {
     const lock = this.pairedLocks.get(address);
     if (typeof reload == "undefined") {
@@ -716,7 +747,6 @@ class Manager extends EventEmitter {
             console.log("Unsuccessful connect attempt to paired lock", lock.getAddress());
             this.connectQueue.add(lock.getAddress());
           }
-          await lock.disconnect();
         } else {
           // add it to the connect queue
           this.connectQueue.add(lock.getAddress());
@@ -810,7 +840,7 @@ class Manager extends EventEmitter {
   async _onLockUpdated(lock, paramsChanged) {
     console.log("lockUpdated", paramsChanged);
     // if lock has new operations read the operations and send updates
-    if (paramsChanged.newEvents == true && lock.hasNewEvents()) {
+    if (paramsChanged.newEvents == true && lock.hasNewEvents() && lock.hasProactiveLogFetching()) {
       if (!lock.isConnected()) {
         const result = await lock.connect();
         // TODO: handle failed connection

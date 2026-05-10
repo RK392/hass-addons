@@ -211,9 +211,21 @@ module.exports = async (server) => {
                 }
               }
 
-              if (confirmedSettings.autolock || confirmedSettings.audio) {
+              if (typeof settings.proactiveLogs != "undefined") {
+                confirmedSettings.proactiveLogs = await manager.setProactiveLogFetching(msg.data.address, settings.proactiveLogs);
+                if (confirmedSettings.proactiveLogs !== true) {
+                  api.sendError("Failed to set proactive log fetching", msg);
+                }
+              }
+
+              if (confirmedSettings.autolock || confirmedSettings.audio || typeof confirmedSettings.proactiveLogs != "undefined") {
                 // allow lock status update to be sent before sending configuration confirmation
                 await sleep(10);
+              }
+
+              const lock = manager.getPairedVisible().get(msg.data.address);
+              if (lock) {
+                await WsApi.sendLockStatus(wss, lock);
               }
 
               api.sendSettingsConfirmation(msg.data.address, confirmedSettings);
