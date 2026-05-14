@@ -204,10 +204,7 @@ class Manager extends EventEmitter {
   async unlockLock(address) {
     const lock = this.pairedLocks.get(address);
     if (typeof lock != "undefined") {
-      if (!(await this._connectLock(lock))) {
-        return false;
-      }
-      try {
+      return await this._executeWithRetry(lock, "unlock", async () => {
         const res = await lock.unlock();
         if (res && typeof lock.getLastOperationTimestamp === "function") {
           const timestamp = lock.getLastOperationTimestamp();
@@ -216,9 +213,7 @@ class Manager extends EventEmitter {
           }
         }
         return res;
-      } catch (error) {
-        console.error(error);
-      }
+      });
     }
     return false;
   }
@@ -226,10 +221,7 @@ class Manager extends EventEmitter {
   async lockLock(address) {
     const lock = this.pairedLocks.get(address);
     if (typeof lock != "undefined") {
-      if (!(await this._connectLock(lock))) {
-        return false;
-      }
-      try {
+      return await this._executeWithRetry(lock, "lock", async () => {
         const res = await lock.lock();
         if (res && typeof lock.getLastOperationTimestamp === "function") {
           const timestamp = lock.getLastOperationTimestamp();
@@ -238,9 +230,7 @@ class Manager extends EventEmitter {
           }
         }
         return res;
-      } catch (error) {
-        console.error(error);
-      }
+      });
     }
     return false;
   }
@@ -693,6 +683,44 @@ class Manager extends EventEmitter {
       return true;
     }
     return true;
+  }
+
+  /**
+   * Executes a lock operation with a retry wrapper if it fails due to a disconnect.
+   * @param {import('ttlock-sdk-js').TTLock} lock
+   * @param {string} operationName
+   * @param {Function} operationFn
+   * @param {number} maxRetries
+   */
+  async _executeWithRetry(lock, operationName, operationFn, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      if (!(await this._connectLock(lock))) {
+        if (attempt < maxRetries) await sleep(1000);
+        continue;
+      }
+      try {
+        const res = await operationFn();
+        if (res !== false) {
+          return res;
+        } else if (!lock.isConnected()) {
+          console.log(`Lock disconnected during ${operationName}, retrying... (${attempt}/${maxRetries})`);
+          if (attempt < maxRetries) await sleep(1000);
+          continue;
+        } else {
+          return res;
+        }
+      } catch (error) {
+        console.error(`Error during ${operationName}`, error);
+        if (!lock.isConnected()) {
+          console.log(`Lock disconnected during ${operationName} (error), retrying... (${attempt}/${maxRetries})`);
+          if (attempt < maxRetries) await sleep(1000);
+          continue;
+        } else {
+          return false;
+        }
+      }
+    }
+    return false;
   }
 
   async _onScanStarted() {
